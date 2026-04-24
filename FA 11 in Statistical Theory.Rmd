@@ -1,0 +1,142 @@
+---
+title: "One-Way ANOVA Using PlantGrowth Dataset"
+output: html_document
+date: "2026-04-24"
+---
+
+```{r}
+data(PlantGrowth)
+head(PlantGrowth)
+```
+**Raincoud Plot**
+```{r}
+library(ggplot2)
+library(ggdist)
+
+ggplot(PlantGrowth,
+       aes(x = group,
+           y = weight,
+           fill = group)) +
+
+# Raw data points
+geom_jitter(
+  width = .08,
+  size = 3,
+  alpha = .8
+) +
+
+# Boxplots
+geom_boxplot(
+  width = .18,
+  alpha = .6,
+  outlier.shape = NA
+) +
+
+# Half violin ("cloud")
+stat_halfeye(
+  adjust = .5,
+  width = .6,
+  justification = -0.35,
+  point_colour = NA,
+  alpha = .5
+) +
+
+labs(
+  title = "Raincloud Plot",
+  x = "",
+  y = "Plant Weight"
+) +
+
+theme_classic(base_size = 16)
+```
+**Shapiro Test**
+```{r}
+by(PlantGrowth$weight, PlantGrowth$group, shapiro.test)
+```
+
+**Descriptive Statistics**
+```{r}
+aggregate(weight ~ group,
+          data=PlantGrowth,
+          function(x)c(
+            Mean=mean(x),
+            SD=sd(x),
+            N=length(x)
+          ))
+```
+
+```{r}
+library(moments)
+
+groups <- split(PlantGrowth$weight, PlantGrowth$group)
+
+desc <- data.frame(
+Statistic = c(
+"Valid",
+"Missing",
+"Mean",
+"Std. Deviation",
+"Skewness",
+"Std. Error of Skewness",
+"Kurtosis",
+"Shapiro-Wilk",
+"P-value of Shapiro-Wilk"
+),
+
+ctrl = c(
+length(groups$ctrl),
+sum(is.na(groups$ctrl)),
+mean(groups$ctrl),
+sd(groups$ctrl),
+skewness(groups$ctrl),
+sqrt(6/length(groups$ctrl)),
+kurtosis(groups$ctrl)-3,
+shapiro.test(groups$ctrl)$statistic,
+shapiro.test(groups$ctrl)$p.value
+),
+
+trt1 = c(
+length(groups$trt1),
+sum(is.na(groups$trt1)),
+mean(groups$trt1),
+sd(groups$trt1),
+skewness(groups$trt1),
+sqrt(6/length(groups$trt1)),
+kurtosis(groups$trt1)-3,
+shapiro.test(groups$trt1)$statistic,
+shapiro.test(groups$trt1)$p.value
+),
+
+trt2 = c(
+length(groups$trt2),
+sum(is.na(groups$trt2)),
+mean(groups$trt2),
+sd(groups$trt2),
+skewness(groups$trt2),
+sqrt(6/length(groups$trt2)),
+kurtosis(groups$trt2)-3,
+shapiro.test(groups$trt2)$statistic,
+shapiro.test(groups$trt2)$p.value
+)
+)
+
+desc
+```
+
+**Levene's Test**
+```{r}
+library(car)
+leveneTest(weight ~ group, data = PlantGrowth)
+```
+**One-Way ANOVA**
+
+```{r}
+anova_model <- aov(weight ~ group, data=PlantGrowth)
+summary(anova_model)
+```
+
+**Post Hoc Test**
+
+```{r}
+TukeyHSD(anova_model)
+```
