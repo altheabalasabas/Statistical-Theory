@@ -1,0 +1,84 @@
+---
+title: "One-Way ANOVA Using PlantGrowth Dataset"
+output: html_document
+date: "2026-04-24"
+---
+
+```{r}
+data(PlantGrowth)
+head(PlantGrowth)
+```
+**Raincoud Plot**
+```{r}
+library(ggplot2)
+library(ggdist)
+
+ggplot(PlantGrowth,
+       aes(x = group,
+           y = weight,
+           fill = group)) +
+
+# Raw data points
+geom_jitter(
+  width = .08,
+  size = 3,
+  alpha = .8
+) +
+
+# Boxplots
+geom_boxplot(
+  width = .18,
+  alpha = .6,
+  outlier.shape = NA
+) +
+
+# Half violin ("cloud")
+stat_halfeye(
+  adjust = .5,
+  width = .6,
+  justification = -0.35,
+  point_colour = NA,
+  alpha = .5
+) +
+
+labs(
+  title = "Raincloud Plot",
+  x = "",
+  y = "Plant Weight"
+) +
+
+theme_classic(base_size = 16)
+```
+**Shapiro Test**
+```{r}
+by(PlantGrowth$weight, PlantGrowth$group, shapiro.test)
+```
+
+**Descriptive Statistics**
+```{r}
+aggregate(weight ~ group,
+          data=PlantGrowth,
+          function(x)c(
+            Mean=mean(x),
+            SD=sd(x),
+            N=length(x)
+          ))
+```
+
+**Levene's Test**
+```{r}
+library(car)
+leveneTest(weight ~ group, data = PlantGrowth)
+```
+**One-Way ANOVA**
+
+```{r}
+anova_model <- aov(weight ~ group, data=PlantGrowth)
+summary(anova_model)
+```
+
+**Post Hoc Test**
+
+```{r}
+TukeyHSD(anova_model)
+```
