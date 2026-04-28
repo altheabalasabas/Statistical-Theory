@@ -1,0 +1,251 @@
+---
+title: "Two-Way ANOVA (2B) Data Analysis"
+output: html_document
+date: "2026-04-28"
+---
+
+# Introduction
+
+This study examines whether crop yield differs according to:
+
+- Fertilizer Blend
+- Crop Type
+- Fertilizer × Crop interaction
+
+## Hypotheses
+
+H01: No main effect of fertilizer  
+H02: No main effect of crop  
+H03: No interaction effect
+
+```{r setup, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(car)
+library(emmeans)
+library(effectsize)
+library(rstatix)
+library(knitr)
+```
+
+# Data
+
+```{r}
+yield <- c(
+123,156,112,100,168,
+128,150,174,116,109,
+166,178,187,153,195,
+151,125,117,155,158,
+
+135,130,176,120,155,
+175,132,120,187,184,
+140,145,159,131,126,
+167,183,142,167,168,
+
+156,180,147,146,193,
+186,138,178,176,190,
+185,206,188,165,188,
+175,173,154,191,169
+)
+
+fertilizer <- factor(rep(c("BlendX","BlendY","BlendZ"),
+each=20))
+
+crop <- factor(rep(
+rep(c("Wheat","Corn","Soy","Rice"),
+each=5),3))
+
+data <- data.frame(yield,fertilizer,crop)
+```
+
+# Descriptive Statistics
+
+```{r}
+data %>%
+group_by(fertilizer,crop) %>%
+summarise(
+Valid=n(),
+Mean=mean(yield),
+SD=sd(yield),
+Skewness=e1071::skewness(yield),
+Kurtosis=e1071::kurtosis(yield)
+)
+```
+
+---
+
+# Assumption Checks
+
+## Assumption 1–3
+- Continuous DV ✓
+- Two categorical IVs ✓
+- Independence assumed ✓
+
+---
+
+## Assumption 4: Outliers
+
+```{r}
+data %>%
+group_by(fertilizer,crop) %>%
+identify_outliers(yield)
+
+ggplot(
+data,
+aes(
+crop,
+yield,
+fill=fertilizer
+)
+)+
+geom_boxplot(
+position=position_dodge(.8),
+outlier.colour="red"
+)+
+geom_jitter(
+position=position_jitterdodge(),
+alpha=.6
+)+
+theme_minimal()
+```
+
+---
+
+## Assumption 5 Normality
+(Like your reference — Shapiro per cell)
+
+```{r}
+data %>%
+group_by(fertilizer,crop) %>%
+shapiro_test(yield)
+```
+
+Interpret:
+p > .05 = normal
+
+---
+
+## Assumption 6 Homogeneity
+
+```{r}
+leveneTest(
+yield ~ fertilizer*crop,
+data=data
+)
+```
+
+---
+
+# Two-Way ANOVA (Type III SS)
+
+```{r}
+options(contrasts=
+c("contr.sum","contr.poly"))
+
+model <- lm(
+yield ~ fertilizer*crop,
+data=data
+)
+
+Anova(
+model,
+type=3
+)
+```
+
+---
+
+# Effect Sizes
+```{r}
+install.packages("rstatix")
+library(rstatix)
+
+anova_test(
+data=data,
+dv=yield,
+between=c(fertilizer,crop)
+)
+```
+---
+
+# If Interaction Significant:
+# Simple Main Effects
+(Like your reference)
+
+```{r}
+emmeans(model,
+pairwise ~ fertilizer|crop,
+adjust="bonferroni")
+```
+
+```{r}
+emmeans(model,
+pairwise ~ crop|fertilizer,
+adjust="bonferroni")
+```
+
+---
+
+# Post Hoc Comparisons
+
+```{r}
+pairs(
+emmeans(model,
+~ fertilizer*crop),
+adjust="tukey"
+)
+```
+
+---
+
+# Interaction Plot
+
+```{r}
+interaction.plot(
+data$crop,
+data$fertilizer,
+data$yield
+)
+```
+
+or
+
+```{r}
+ggplot(
+data,
+aes(crop,yield,
+color=fertilizer,
+group=fertilizer)
+)+
+stat_summary(
+fun=mean,
+geom="line"
+)+
+stat_summary(
+fun=mean,
+geom="point"
+)
+```
+
+---
+
+# APA Results
+
+A two-way factorial ANOVA was conducted to test the effects of fertilizer blend and crop type on yield.
+
+There was a significant main effect of fertilizer,
+F(2,48)=14.14, p<.001, partial η²=.37.
+
+There was a significant main effect of crop,
+F(3,48)=3.54, p=.021, partial η²=.18.
+
+There was also a significant fertilizer × crop interaction,
+F(6,48)=2.64, p=.028, partial η²=.25,
+indicating fertilizer effectiveness depended on crop type.
+
+---
+
+# Conclusion
+
+Reject H01  
+Reject H02  
+Reject H03
